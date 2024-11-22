@@ -39,17 +39,17 @@ def main():
     st.title("Klasifikasi Citra Padi")
     st.write("Aplikasi ini dapat mengklasifikasikan gambar padi ke dalam 5 kelas: Arborio, Basmati, Ipsala, Jasmine, Karacadag.")
     
-    # Menampilkan contoh gambar tiap kelas
+    # Menampilkan contoh gambar tiap kelas dari folder masing-masing
     st.write("Contoh gambar untuk tiap kelas:")
     
-    # Menampilkan gambar per kelas
-    image_paths = {
-        "Arborio": "path_to_arborio_image.jpg",
-        "Basmati": "path_to_basmati_image.jpg",
-        "Ipsala": "path_to_ipsala_image.jpg",
-        "Jasmine": "path_to_jasmine_image.jpg",
-        "Karacadag": "path_to_karacadag_image.jpg",
-    }
+    # Menampilkan gambar per kelas dari folder yang sesuai
+    image_paths = {}
+    for class_name in CLASS_LABELS:
+        folder_path = class_name
+        # Ambil gambar pertama dari folder untuk setiap kelas
+        class_images = os.listdir(folder_path)
+        first_image_path = os.path.join(folder_path, class_images[0])  # Mengambil gambar pertama
+        image_paths[class_name] = first_image_path
 
     cols = st.columns(5)  # Membuat 5 kolom untuk menampilkan gambar dalam 1 baris
     for i, class_name in enumerate(CLASS_LABELS):
