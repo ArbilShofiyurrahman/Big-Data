@@ -5,11 +5,11 @@ from tensorflow.keras.preprocessing import image
 import numpy as np
 from PIL import Image
 
-# Menyusun model CNN pre-trained
+# Menyusun model CNN pre-trained dan fine-tuning
 @st.cache_resource
 def load_model():
     base_model = tf.keras.applications.MobileNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
-    base_model.trainable = False  # Tidak melatih model dasar
+    base_model.trainable = False  # Menonaktifkan pelatihan model dasar
     model = tf.keras.Sequential([
         base_model,
         tf.keras.layers.GlobalAveragePooling2D(),
@@ -38,6 +38,23 @@ def classify_image(image_path):
 def main():
     st.title("Klasifikasi Citra Padi")
     st.write("Aplikasi ini dapat mengklasifikasikan gambar padi ke dalam 5 kelas: Arborio, Basmati, Ipsala, Jasmine, Karacadag.")
+    
+    # Menampilkan contoh gambar tiap kelas
+    st.write("Contoh gambar untuk tiap kelas:")
+    
+    # Menampilkan gambar per kelas
+    image_paths = {
+        "Arborio": "path_to_arborio_image.jpg",
+        "Basmati": "path_to_basmati_image.jpg",
+        "Ipsala": "path_to_ipsala_image.jpg",
+        "Jasmine": "path_to_jasmine_image.jpg",
+        "Karacadag": "path_to_karacadag_image.jpg",
+    }
+
+    cols = st.columns(5)  # Membuat 5 kolom untuk menampilkan gambar dalam 1 baris
+    for i, class_name in enumerate(CLASS_LABELS):
+        with cols[i]:
+            st.image(image_paths[class_name], caption=class_name, use_column_width=True)
 
     # Membuat pilihan untuk mengunggah gambar
     uploaded_file = st.file_uploader("Pilih gambar padi untuk diklasifikasikan", type=["jpg", "png", "jpeg"])
