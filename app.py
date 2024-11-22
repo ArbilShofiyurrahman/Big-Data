@@ -1,37 +1,27 @@
-import streamlit as st
-from flask import Flask, render_template, request, redirect, url_for
 import os
+import streamlit as st
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 import numpy as np
-from werkzeug.utils import secure_filename
+from PIL import Image
 
-# Konfigurasi Flask
-app = Flask(__name__)
+# Menyusun model CNN pre-trained
+@st.cache_resource
+def load_model():
+    base_model = tf.keras.applications.MobileNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+    base_model.trainable = False  # Tidak melatih model dasar
+    model = tf.keras.Sequential([
+        base_model,
+        tf.keras.layers.GlobalAveragePooling2D(),
+        tf.keras.layers.Dense(5, activation='softmax')  # 5 kelas
+    ])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    return model
 
-# Direktori kelas
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CLASS_DIRS = {
-    "Arborio": os.path.join(BASE_DIR, "Arborio"),
-    "Basmati": os.path.join(BASE_DIR, "Basmati"),
-    "Ipsala": os.path.join(BASE_DIR, "Ipsala"),
-    "Jasmine": os.path.join(BASE_DIR, "Jasmine"),
-    "Karacadag": os.path.join(BASE_DIR, "Karacadag"),
-}
+model = load_model()
 
-# Memuat model pre-trained MobileNetV2 dan menambahkan layer klasifikasi
-base_model = tf.keras.applications.MobileNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
-base_model.trainable = False  # Tidak melatih model dasar
-
-# Menambahkan lapisan klasifikasi
-model = tf.keras.Sequential([
-    base_model,
-    tf.keras.layers.GlobalAveragePooling2D(),
-    tf.keras.layers.Dense(5, activation='softmax')  # 5 kelas
-])
-
-# Mengkompilasi model
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+# Daftar kelas yang akan digunakan untuk klasifikasi
+CLASS_LABELS = ["Arborio", "Basmati", "Ipsala", "Jasmine", "Karacadag"]
 
 # Fungsi untuk mengklasifikasikan gambar
 def classify_image(image_path):
@@ -42,43 +32,32 @@ def classify_image(image_path):
     
     predictions = model.predict(img_array)
     class_idx = np.argmax(predictions)  # Menemukan kelas dengan skor tertinggi
-    class_labels = ["Arborio", "Basmati", "Ipsala", "Jasmine", "Karacadag"]  # Daftar kelas
-    return class_labels[class_idx]  # Mengembalikan nama kelas yang diprediksi
+    return CLASS_LABELS[class_idx]  # Mengembalikan nama kelas yang diprediksi
 
-# Halaman Utama
-@app.route('/')
-def home():
-    examples = {}
-    for class_name, path in CLASS_DIRS.items():
-        # Ambil satu contoh gambar dari masing-masing kelas
-        images = [img for img in os.listdir(path) if img.endswith(('.png', '.jpg', '.jpeg'))]
-        if images:
-            examples[class_name] = os.path.join(class_name, images[0])
-    return render_template('index.html', examples=examples)
+# Aplikasi Streamlit
+def main():
+    st.title("Klasifikasi Citra Padi")
+    st.write("Aplikasi ini dapat mengklasifikasikan gambar padi ke dalam 5 kelas: Arborio, Basmati, Ipsala, Jasmine, Karacadag.")
 
-# Halaman Upload
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'POST':
-        file = request.files['file']
-        if file:
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(BASE_DIR, filename)
-            file.save(file_path)
-            
-            # Prediksi kelas gambar menggunakan CNN
-            predicted_class = classify_image(file_path)
+    # Membuat pilihan untuk mengunggah gambar
+    uploaded_file = st.file_uploader("Pilih gambar padi untuk diklasifikasikan", type=["jpg", "png", "jpeg"])
+    
+    if uploaded_file is not None:
+        # Menampilkan gambar yang diunggah
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Gambar yang diunggah", use_column_width=True)
 
-            # Hapus file upload setelah prediksi (opsional)
-            os.remove(file_path)
-            
-            return redirect(url_for('result', predicted_class=predicted_class))
-    return render_template('upload.html')
+        # Menyimpan file sementara untuk prediksi
+        with open("uploaded_image.jpg", "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-# Halaman Hasil
-@app.route('/result/<predicted_class>')
-def result(predicted_class):
-    return render_template('result.html', predicted_class=predicted_class)
+        # Klasifikasi gambar
+        if st.button("Klasifikasikan Gambar"):
+            predicted_class = classify_image("uploaded_image.jpg")
+            st.write(f"Prediksi kelas gambar: {predicted_class}")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+            # Hapus file sementara
+            os.remove("uploaded_image.jpg")
+
+if __name__ == "__main__":
+    main()
