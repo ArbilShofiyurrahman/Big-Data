@@ -1,115 +1,84 @@
 import streamlit as st
-import pandas as pd
+from flask import Flask, render_template, request, redirect, url_for
+import os
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
 import numpy as np
-import re
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import train_test_split
-import scipy.sparse as sp
+from werkzeug.utils import secure_filename
 
-# Daftar kata kunci untuk setiap kategori
-keywords = {
-    "wisata religi": [
-        "masjid", "pura", "vihara", "upacara", "ziarah", "makam", "habib", "ramadhan", "religi",
-        "sunan", "candi", "agama", "islam", "borobudur", "al-qur'an", "waisak", "jemaah", "ibadah",
-        "kubah", "gereja", "patung", "rosario", "mezbah", "biara", "meditasi", "thirtha", "haji",
-        "umrah", "doa", "yasinan", "istighosah", "tahlilan", "tadarus", "misa", "kelenteng"
-    ],
-    "wisata alam": [
-        "gunung", "pantai", "hutan", "sungai", "air terjun", "camping", "dieng", "baduy", "labuan bajo",
-        "ancol", "taman nasional", "gunung bromo", "raja ampat", "pulau komodo", "tanjung puting", "kawah ijen",
-        "semeru", "merapi", "rinjani", "taman laut", "taman safari", "suaka margasatwa", "goa", "cagar alam",
-        "danau", "terumbu karang", "pesisir", "sabana", "bukit", "lembah", "sawah", "perkemahan",
-        "tebing", "mangrove", "sumber air panas"
-    ],
-    "wisata buatan": [
-        "taman bermain", "museum", "kebun binatang", "monumen", "pasar", "hotel", "restoran",
-        "waterpark", "theme park", "galeri seni", "taman kota", "gedung konser", "teater", "sirkus",
-        "kebun raya", "taman bunga", "kolam renang", "kebun teh", "kebun kopi", "jembatan", "stadion",
-        "arena olahraga", "perpustakaan", "bioskop", "pusat sains", "observatorium", "taman hiburan",
-        "taman edukasi", "pameran", "galeri", "pusat kerajinan", "toko suvenir", "spa", "resort", "lapangan golf"
-    ]
+# Konfigurasi Flask
+app = Flask(__name__)
+
+# Direktori kelas
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CLASS_DIRS = {
+    "Arborio": os.path.join(BASE_DIR, "Arborio"),
+    "Basmati": os.path.join(BASE_DIR, "Basmati"),
+    "Ipsala": os.path.join(BASE_DIR, "Ipsala"),
+    "Jasmine": os.path.join(BASE_DIR, "Jasmine"),
+    "Karacadag": os.path.join(BASE_DIR, "Karacadag"),
 }
 
-# Fungsi untuk preprocessing teks
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-    text = re.sub(r'\s+', ' ', text)
-    return text
+# Memuat model pre-trained MobileNetV2 dan menambahkan layer klasifikasi
+base_model = tf.keras.applications.MobileNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+base_model.trainable = False  # Tidak melatih model dasar
 
-# Load dataset
-dataset_path = "https://gist.githubusercontent.com/ArbilShofiyurrahman/599d79fc45a06ae40a750f558879392e/raw/2dad7e7cdaca0964bfc85c3efe17b1c0c94a3f70/setelahpreprocess.csv"  # Update with your dataset path
-dataset = pd.read_csv(dataset_path)
+# Menambahkan lapisan klasifikasi
+model = tf.keras.Sequential([
+    base_model,
+    tf.keras.layers.GlobalAveragePooling2D(),
+    tf.keras.layers.Dense(5, activation='softmax')  # 5 kelas
+])
 
-# Preprocess dataset
-dataset['Konten'] = dataset['Konten'].apply(preprocess_text)
+# Mengkompilasi model
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-# Fungsi untuk ekstraksi fitur kata kunci
-def extract_keyword_features(text):
-    features = []
-    for category, keywords_list in keywords.items():
-        features.append(any(keyword in text for keyword in keywords_list))
-    return features
+# Fungsi untuk mengklasifikasikan gambar
+def classify_image(image_path):
+    img = image.load_img(image_path, target_size=(224, 224))  # Menyesuaikan ukuran gambar
+    img_array = image.img_to_array(img)  # Mengubah gambar menjadi array
+    img_array = np.expand_dims(img_array, axis=0)  # Menambahkan dimensi batch
+    img_array = img_array / 255.0  # Normalisasi gambar
+    
+    predictions = model.predict(img_array)
+    class_idx = np.argmax(predictions)  # Menemukan kelas dengan skor tertinggi
+    class_labels = ["Arborio", "Basmati", "Ipsala", "Jasmine", "Karacadag"]  # Daftar kelas
+    return class_labels[class_idx]  # Mengembalikan nama kelas yang diprediksi
 
-# Ekstraksi fitur kata kunci untuk setiap konten
-keyword_features = dataset['Konten'].apply(extract_keyword_features)
-keyword_features = np.array(keyword_features.tolist())
+# Halaman Utama
+@app.route('/')
+def home():
+    examples = {}
+    for class_name, path in CLASS_DIRS.items():
+        # Ambil satu contoh gambar dari masing-masing kelas
+        images = [img for img in os.listdir(path) if img.endswith(('.png', '.jpg', '.jpeg'))]
+        if images:
+            examples[class_name] = os.path.join(class_name, images[0])
+    return render_template('index.html', examples=examples)
 
-# Split dataset into X and y
-x_data = dataset['Konten']
-y_data = dataset['LabelId']
+# Halaman Upload
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(BASE_DIR, filename)
+            file.save(file_path)
+            
+            # Prediksi kelas gambar menggunakan CNN
+            predicted_class = classify_image(file_path)
 
-# Vectorize text data
-tfidf = TfidfVectorizer(max_features=5000)
-x_data_vectorized = tfidf.fit_transform(x_data)
+            # Hapus file upload setelah prediksi (opsional)
+            os.remove(file_path)
+            
+            return redirect(url_for('result', predicted_class=predicted_class))
+    return render_template('upload.html')
 
-# Menggabungkan fitur TF-IDF dengan fitur kata kunci
-x_data_combined = sp.hstack([x_data_vectorized, keyword_features])
+# Halaman Hasil
+@app.route('/result/<predicted_class>')
+def result(predicted_class):
+    return render_template('result.html', predicted_class=predicted_class)
 
-# Train-test split
-x_train, x_test, y_train, y_test = train_test_split(x_data_combined, y_data, test_size=0.2, random_state=0, shuffle=True)
-
-# Initialize and train KNN model
-knn_classifier = KNeighborsClassifier(n_neighbors=3)
-knn_classifier.fit(x_train, y_train)
-
-# Streamlit app
-def main():
-    st.title("Klasifikasi Berita Pariwisata")
-    st.subheader("Selamat datang di aplikasi klasifikasi berita pariwisata!")
-    st.markdown("""
-    ### Informasi Aplikasi
-    Aplikasi ini dirancang untuk mengklasifikasikan berita pariwisata ke dalam tiga kategori utama:
-    1. **Wisata Religi**: Berita terkait tempat ibadah, kegiatan keagamaan, dan tempat ziarah.
-    2. **Wisata Alam**: Berita tentang keindahan alam seperti gunung, pantai, hutan, dan danau.
-    3. **Wisata Buatan**: Berita yang berhubungan dengan tempat-tempat buatan manusia seperti taman bermain, museum, dan pasar.
-
-    Masukkan teks berita pariwisata di bawah ini untuk melihat kategori yang sesuai.
-    """)
-    st.subheader("Masukkan Berita Pariwisata di bawah:")
-
-    # Text input for news article
-    article_text = st.text_area("Masukan Konten", "")
-
-    if st.button("Kategori Kan Sekarang"):
-        # Preprocess text
-        processed_text = preprocess_text(article_text)
-        # Vectorize text
-        text_vectorized = tfidf.transform([processed_text])
-        # Extract keyword features
-        keyword_features_input = np.array(extract_keyword_features(processed_text)).reshape(1, -1)
-        # Combine features
-        text_combined = sp.hstack([text_vectorized, keyword_features_input])
-        # Predict category
-        prediction = knn_classifier.predict(text_combined)
-        # Map prediction to category
-        categories = {0: "Wisata Religi", 1: "Wisata Alam", 2: "Wisata Buatan"}
-        predicted_category = categories.get(prediction[0], "Unknown")
-        # Display result
-        st.write("Berita Ini Termasuk Kategori:", predicted_category)
-
-        
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    app.run(debug=True)
