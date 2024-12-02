@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 import numpy as np
 from PIL import Image
+import matplotlib.pyplot as plt
 
 # Menyusun model CNN pre-trained dan fine-tuning
 @st.cache_resource
@@ -32,7 +33,24 @@ def classify_image(image_path):
     
     predictions = model.predict(img_array)
     class_idx = np.argmax(predictions)  # Menemukan kelas dengan skor tertinggi
-    return CLASS_LABELS[class_idx]  # Mengembalikan nama kelas yang diprediksi
+    return CLASS_LABELS[class_idx], predictions[0]  # Mengembalikan nama kelas dan skor probabilitas
+
+# Fungsi untuk menampilkan insight visualisasi hasil klasifikasi
+def display_insight(results):
+    st.subheader("Visualisasi Hasil Klasifikasi")
+    st.write("Grafik di bawah ini menunjukkan distribusi hasil klasifikasi pada data yang telah dianalisis:")
+    
+    # Membuat grafik
+    labels = list(results.keys())
+    values = list(results.values())
+    
+    fig, ax = plt.subplots()
+    ax.bar(labels, values, color=['blue', 'green', 'orange', 'red', 'purple'])
+    ax.set_title("Distribusi Hasil Klasifikasi")
+    ax.set_xlabel("Kelas Padi")
+    ax.set_ylabel("Jumlah Prediksi")
+    
+    st.pyplot(fig)
 
 # Aplikasi Streamlit
 def main():
@@ -41,23 +59,26 @@ def main():
     
     # Menampilkan contoh gambar tiap kelas dari folder masing-masing
     st.write("Contoh gambar untuk tiap kelas:")
-    
-    # Menampilkan gambar per kelas dari folder yang sesuai
     image_paths = {}
     for class_name in CLASS_LABELS:
         folder_path = class_name
-        # Ambil gambar pertama dari folder untuk setiap kelas
-        class_images = os.listdir(folder_path)
-        first_image_path = os.path.join(folder_path, class_images[0])  # Mengambil gambar pertama
-        image_paths[class_name] = first_image_path
+        if os.path.exists(folder_path) and os.path.isdir(folder_path):
+            class_images = os.listdir(folder_path)
+            if class_images:
+                first_image_path = os.path.join(folder_path, class_images[0])  # Mengambil gambar pertama
+                image_paths[class_name] = first_image_path
 
     cols = st.columns(5)  # Membuat 5 kolom untuk menampilkan gambar dalam 1 baris
     for i, class_name in enumerate(CLASS_LABELS):
-        with cols[i]:
-            st.image(image_paths[class_name], caption=class_name, use_column_width=True)
+        if class_name in image_paths:
+            with cols[i]:
+                st.image(image_paths[class_name], caption=class_name, use_column_width=True)
 
     # Membuat pilihan untuk mengunggah gambar
     uploaded_file = st.file_uploader("Pilih gambar padi untuk diklasifikasikan", type=["jpg", "png", "jpeg"])
+    
+    # Menyimpan hasil klasifikasi untuk visualisasi
+    classification_results = {label: 0 for label in CLASS_LABELS}
     
     if uploaded_file is not None:
         # Menampilkan gambar yang diunggah
@@ -70,11 +91,20 @@ def main():
 
         # Klasifikasi gambar
         if st.button("Klasifikasikan Gambar"):
-            predicted_class = classify_image("uploaded_image.jpg")
+            predicted_class, prediction_scores = classify_image("uploaded_image.jpg")
             st.write(f"Prediksi kelas gambar: {predicted_class}")
+            st.write(f"Probabilitas tiap kelas:")
+            for i, label in enumerate(CLASS_LABELS):
+                st.write(f"{label}: {prediction_scores[i]:.2f}")
+            
+            # Tambahkan hasil prediksi ke dalam hasil klasifikasi
+            classification_results[predicted_class] += 1
 
             # Hapus file sementara
             os.remove("uploaded_image.jpg")
+
+    # Menampilkan grafik distribusi hasil klasifikasi
+    display_insight(classification_results)
 
 if __name__ == "__main__":
     main()
