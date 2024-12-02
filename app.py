@@ -88,13 +88,13 @@ def main():
             predictions = st.session_state["predictions"]
             
             # Membuat grafik dengan ukuran lebih kecil
-            fig, ax = plt.subplots(figsize=(4, 3))  # Ubah ukuran dengan figsize (lebar, tinggi)
+            fig, ax = plt.subplots(figsize=(2, 1))  # Ubah ukuran dengan figsize (lebar, tinggi)
             ax.bar(CLASS_LABELS, predictions, color="skyblue")
-            ax.set_title("Probabilitas Tiap Kelas", fontsize=10)
-            ax.set_ylabel("Probabilitas", fontsize=8)
-            ax.set_xlabel("Kelas", fontsize=8)
-            ax.tick_params(axis='x', labelsize=8)  # Ukuran label sumbu x lebih kecil
-            ax.tick_params(axis='y', labelsize=8)  # Ukuran label sumbu y lebih kecil
+            ax.set_title("Probabilitas Tiap Kelas", fontsize=5)
+            ax.set_ylabel("Probabilitas", fontsize=4)
+            ax.set_xlabel("Kelas", fontsize=4)
+            ax.tick_params(axis='x', labelsize=4)  # Ukuran label sumbu x lebih kecil
+            ax.tick_params(axis='y', labelsize=4)  # Ukuran label sumbu y lebih kecil
             
             # Tampilkan grafik dalam Streamlit
             st.pyplot(fig)
