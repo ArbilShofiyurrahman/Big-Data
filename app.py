@@ -82,13 +82,13 @@ def main():
 
     # Menu untuk Insight Visualisasi
     if "predictions" in st.session_state:
-        st.write("### Menu Insight")
+        
         # Tombol untuk menampilkan insight
         if st.button("Tampilkan Insight"):
             predictions = st.session_state["predictions"]
             
             # Membuat grafik dengan ukuran lebih kecil
-            fig, ax = plt.subplots(figsize=(2, 1))  # Ubah ukuran dengan figsize (lebar, tinggi)
+            fig, ax = plt.subplots(figsize=(2, 1.5))  # Ubah ukuran dengan figsize (lebar, tinggi)
             ax.bar(CLASS_LABELS, predictions, color="skyblue")
             ax.set_title("Probabilitas Tiap Kelas", fontsize=5)
             ax.set_ylabel("Probabilitas", fontsize=4)
