@@ -88,9 +88,9 @@ def main():
             predictions = st.session_state["predictions"]
             
             # Membuat grafik dengan ukuran lebih kecil
-            fig, ax = plt.subplots(figsize=(2, 1.5))  # Ubah ukuran dengan figsize (lebar, tinggi)
-            ax.bar(CLASS_LABELS, predictions, color="skyblue")
-            ax.set_title("Probabilitas Tiap Kelas", fontsize=5)
+            fig, ax = plt.subplots(figsize=(2, 1.2))  # Ubah ukuran dengan figsize (lebar, tinggi)
+            ax.bar(CLASS_LABELS, predictions, color="red")
+            ax.set_title("Probabilitas Tiap Kelas", fontsize=4)
             ax.set_ylabel("Probabilitas", fontsize=4)
             ax.set_xlabel("Kelas", fontsize=4)
             ax.tick_params(axis='x', labelsize=4)  # Ukuran label sumbu x lebih kecil
