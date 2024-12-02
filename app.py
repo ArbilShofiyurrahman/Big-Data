@@ -81,15 +81,23 @@ def main():
             os.remove("uploaded_image.jpg")
 
     # Menu untuk Insight Visualisasi
-    if "predictions" in st.session_state:
-        if st.button("Tampilkan Insight"):
-            predictions = st.session_state["predictions"]
-            fig, ax = plt.subplots()
-            ax.bar(CLASS_LABELS, predictions, color="skyblue")
-            ax.set_title("Probabilitas Tiap Kelas")
-            ax.set_ylabel("Probabilitas")
-            ax.set_xlabel("Kelas")
-            st.pyplot(fig)
+    # Menu untuk Insight Visualisasi
+if "predictions" in st.session_state:
+    if st.button("Tampilkan Insight"):
+        predictions = st.session_state["predictions"]
+        
+        # Membuat grafik dengan ukuran lebih kecil
+        fig, ax = plt.subplots(figsize=(4, 3))  # Ubah ukuran dengan figsize (lebar, tinggi)
+        ax.bar(CLASS_LABELS, predictions, color="skyblue")
+        ax.set_title("Probabilitas Tiap Kelas", fontsize=10)
+        ax.set_ylabel("Probabilitas", fontsize=8)
+        ax.set_xlabel("Kelas", fontsize=8)
+        ax.tick_params(axis='x', labelsize=8)  # Ukuran label sumbu x lebih kecil
+        ax.tick_params(axis='y', labelsize=8)  # Ukuran label sumbu y lebih kecil
+        
+        # Tampilkan grafik dalam Streamlit
+        st.pyplot(fig)
+
 
 if __name__ == "__main__":
     main()
