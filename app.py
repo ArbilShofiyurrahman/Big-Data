@@ -56,21 +56,22 @@ def main():
         with cols[i]:
             st.image(image_paths[class_name], caption=class_name, use_column_width=True)
 
-    # Membuat pilihan untuk mengunggah gambar
-    uploaded_file = st.file_uploader("Pilih gambar padi untuk diklasifikasikan", type=["jpg", "png", "jpeg"])
+    # Inputan untuk mengambil gambar real-time dari kamera
+    st.write("Ambil gambar padi menggunakan kamera:")
+    image_file = st.camera_input("Capture Image")
     
-    if uploaded_file is not None:
-        # Menampilkan gambar yang diunggah
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Gambar yang diunggah", use_column_width=True)
+    if image_file is not None:
+        # Menampilkan gambar yang diambil
+        img = Image.open(image_file)
+        st.image(img, caption="Gambar yang diambil", use_column_width=True)
 
         # Menyimpan file sementara untuk prediksi
-        with open("uploaded_image.jpg", "wb") as f:
-            f.write(uploaded_file.getbuffer())
+        with open("captured_image.jpg", "wb") as f:
+            f.write(image_file.getbuffer())
 
         # Klasifikasi gambar
         if st.button("Klasifikasikan Gambar"):
-            predictions = classify_image("uploaded_image.jpg")
+            predictions = classify_image("captured_image.jpg")
             predicted_class = CLASS_LABELS[np.argmax(predictions)]
             st.write(f"Prediksi kelas gambar: {predicted_class}")
 
@@ -78,7 +79,7 @@ def main():
             st.session_state["predictions"] = predictions
 
             # Hapus file sementara
-            os.remove("uploaded_image.jpg")
+            os.remove("captured_image.jpg")
 
     # Menu untuk Insight Visualisasi
     if "predictions" in st.session_state:
