@@ -56,30 +56,56 @@ def main():
         with cols[i]:
             st.image(image_paths[class_name], caption=class_name, use_column_width=True)
 
-    # Inputan untuk mengambil gambar real-time dari kamera
-    st.write("Ambil gambar padi menggunakan kamera:")
-    image_file = st.camera_input("Capture Image")
-    
-    if image_file is not None:
-        # Menampilkan gambar yang diambil
-        img = Image.open(image_file)
-        st.image(img, caption="Gambar yang diambil", use_column_width=True)
+    # Pilihan input gambar: file atau kamera
+    input_type = st.radio("Pilih sumber gambar:", ("Unggah file", "Ambil foto dari kamera"))
 
-        # Menyimpan file sementara untuk prediksi
-        with open("captured_image.jpg", "wb") as f:
-            f.write(image_file.getbuffer())
+    if input_type == "Unggah file":
+        # Inputan untuk mengunggah gambar dari file
+        uploaded_file = st.file_uploader("Unggah gambar padi", type=["jpg", "jpeg", "png"])
+        if uploaded_file is not None:
+            # Menampilkan gambar yang diunggah
+            img = Image.open(uploaded_file)
+            st.image(img, caption="Gambar yang diunggah", use_column_width=True)
 
-        # Klasifikasi gambar
-        if st.button("Klasifikasikan Gambar"):
-            predictions = classify_image("captured_image.jpg")
-            predicted_class = CLASS_LABELS[np.argmax(predictions)]
-            st.write(f"Prediksi kelas gambar: {predicted_class}")
+            # Klasifikasi gambar
+            if st.button("Klasifikasikan Gambar"):
+                with open("uploaded_image.jpg", "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                predictions = classify_image("uploaded_image.jpg")
+                predicted_class = CLASS_LABELS[np.argmax(predictions)]
+                st.write(f"Prediksi kelas gambar: {predicted_class}")
 
-            # Menyimpan hasil probabilitas untuk visualisasi
-            st.session_state["predictions"] = predictions
+                # Menyimpan hasil probabilitas untuk visualisasi
+                st.session_state["predictions"] = predictions
 
-            # Hapus file sementara
-            os.remove("captured_image.jpg")
+                # Hapus file sementara
+                os.remove("uploaded_image.jpg")
+
+    elif input_type == "Ambil foto dari kamera":
+        # Inputan untuk mengambil gambar real-time dari kamera
+        st.write("Ambil gambar padi menggunakan kamera:")
+        image_file = st.camera_input("Capture Image")
+        
+        if image_file is not None:
+            # Menampilkan gambar yang diambil
+            img = Image.open(image_file)
+            st.image(img, caption="Gambar yang diambil", use_column_width=True)
+
+            # Menyimpan file sementara untuk prediksi
+            with open("captured_image.jpg", "wb") as f:
+                f.write(image_file.getbuffer())
+
+            # Klasifikasi gambar
+            if st.button("Klasifikasikan Gambar"):
+                predictions = classify_image("captured_image.jpg")
+                predicted_class = CLASS_LABELS[np.argmax(predictions)]
+                st.write(f"Prediksi kelas gambar: {predicted_class}")
+
+                # Menyimpan hasil probabilitas untuk visualisasi
+                st.session_state["predictions"] = predictions
+
+                # Hapus file sementara
+                os.remove("captured_image.jpg")
 
     # Menu untuk Insight Visualisasi
     if "predictions" in st.session_state:
